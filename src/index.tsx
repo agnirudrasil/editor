@@ -1,3 +1,4 @@
+import { createTheme, CssBaseline, ThemeProvider } from "@mui/material";
 import { StrictMode } from "react";
 import * as ReactDOMClient from "react-dom/client";
 
@@ -8,6 +9,9 @@ const root = ReactDOMClient.createRoot(rootElement);
 
 root.render(
   <StrictMode>
-    <App />
+    <ThemeProvider theme={createTheme()}>
+      <CssBaseline />
+      <App />
+    </ThemeProvider>
   </StrictMode>
 );
