@@ -36,7 +36,14 @@ export type CustomElement =
   | EmojiElement
   | MentionElement;
 
-export type FormattedText = { text: string; bold?: boolean; syntax?: boolean };
+export type FormattedText = {
+  text: string;
+  code?: boolean;
+  bold?: boolean;
+  italic?: boolean;
+  underlined?: boolean;
+  syntax?: boolean;
+};
 
 export type CustomText = FormattedText;
 

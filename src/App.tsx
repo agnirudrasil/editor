@@ -18,8 +18,20 @@ import { withMention } from "./plugins/withMention";
 import { insertMention } from "./utils/insertMention";
 
 const RenderLeaf = ({ attributes, children, leaf }: RenderLeafProps) => {
+  if (leaf.code) {
+    return <code {...attributes}>{children}</code>;
+  }
+
   return (
-    <span style={{ color: leaf.syntax ? "#ccc" : "black" }} {...attributes}>
+    <span
+      style={{
+        color: leaf.syntax ? "#ccc" : "black",
+        fontWeight: leaf.bold ? "bold" : undefined,
+        fontStyle: leaf.italic ? "italic" : undefined,
+        textDecoration: leaf.underlined ? "underline" : undefined
+      }}
+      {...attributes}
+    >
       {children}
     </span>
   );
@@ -94,16 +106,6 @@ export default function App() {
 
   const decorate = useCallback(([node, path]: NodeEntry<Node>) => {
     const ranges: Range[] = [];
-    if (Text.isText(node)) {
-      const andIndex = node.text.indexOf("&");
-      if (andIndex > 1) {
-        ranges.push({
-          syntax: true,
-          anchor: { path, offset: andIndex },
-          focus: { path, offset: andIndex + 1 }
-        });
-      }
-    }
 
     return ranges;
   }, []);
