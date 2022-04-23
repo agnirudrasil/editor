@@ -18,6 +18,6 @@ export const insertEmoji = (
         text: " "
       }
     ],
-    { at }
+    { at, select: true }
   );
 };

@@ -12,8 +12,9 @@ export const withMention = (editor: Editor) => {
 
   editor.normalizeNode = (nodeEntry) => {
     const [node, path] = nodeEntry;
-    if (Text.isText(node) && /<@\d*?>/.test(node.text)) {
-      const [complete, id] = /<@(\d*?)>/.exec(node.text) || [];
+    if (Text.isText(node) && /<(@|#|@&|:.+?:)(\d+?)>/.test(node.text)) {
+      const [complete, type, id] =
+        /<(@|#|@&|:.+?:)(\d+?)>/.exec(node.text) || [];
       const index = node.text.indexOf(complete);
 
       insertMention(
@@ -21,7 +22,8 @@ export const withMention = (editor: Editor) => {
         {
           id,
           name: "Agnirudra Sil",
-          mentionType: "user"
+          mentionType:
+            type === "#" ? "channel" : type === "@&" ? "role" : "user"
         },
         {
           anchor: { path, offset: index },

@@ -1,15 +1,29 @@
 import "emoji-mart/css/emoji-mart.css";
 
 import React, { useCallback, useRef, useState } from "react";
-import { createEditor, Editor } from "slate";
+import { createEditor, Editor, Node, NodeEntry, Range, Text } from "slate";
 import { withHistory } from "slate-history";
-import { Slate, withReact, Editable, RenderElementProps } from "slate-react";
+import {
+  Slate,
+  withReact,
+  Editable,
+  RenderElementProps,
+  RenderLeafProps
+} from "slate-react";
 import { Emoji, Picker } from "emoji-mart";
 import { Stack, IconButton, Popover, Typography } from "@mui/material";
 import { AddCircle, EmojiEmotions, Gif } from "@mui/icons-material";
 import { withEmoji } from "./plugins/withEmoji";
 import { withMention } from "./plugins/withMention";
 import { insertMention } from "./utils/insertMention";
+
+const RenderLeaf = ({ attributes, children, leaf }: RenderLeafProps) => {
+  return (
+    <span style={{ color: leaf.syntax ? "#ccc" : "black" }} {...attributes}>
+      {children}
+    </span>
+  );
+};
 
 const RenderElement = ({
   element,
@@ -37,24 +51,31 @@ const RenderElement = ({
           sx={{
             display: "inline",
             verticalAlign: "middle",
-            bgcolor: "primary.main",
+            bgcolor:
+              element.mentionType === "role"
+                ? "secondary.main"
+                : "primary.main",
             color: "white",
             borderRadius: "3px",
             p: 0.5,
             transition: "background-color 300ms ease",
             "&:hover": {
-              bgcolor: "primary.dark"
+              bgcolor:
+                element.mentionType === "role"
+                  ? "secondary.dark"
+                  : "primary.dark"
             }
           }}
           {...attributes}
         >
-          @{element.name}
+          {element.mentionType === "channel" ? "#" : "@"}
+          {element.name}
           {children}
         </Typography>
       );
     default:
       return (
-        <Typography component="p" {...attributes}>
+        <Typography {...attributes} component="p">
           {children}
         </Typography>
       );
@@ -71,8 +92,29 @@ export default function App() {
 
   const editor = editorRef.current;
 
+  const decorate = useCallback(([node, path]: NodeEntry<Node>) => {
+    const ranges: Range[] = [];
+    if (Text.isText(node)) {
+      const andIndex = node.text.indexOf("&");
+      if (andIndex > 1) {
+        ranges.push({
+          syntax: true,
+          anchor: { path, offset: andIndex },
+          focus: { path, offset: andIndex + 1 }
+        });
+      }
+    }
+
+    return ranges;
+  }, []);
+
   const renderElement = useCallback(
     (props: RenderElementProps) => <RenderElement {...props} />,
+    []
+  );
+
+  const renderLeaf = useCallback(
+    (props: RenderLeafProps) => <RenderLeaf {...props} />,
     []
   );
 
@@ -108,9 +150,10 @@ export default function App() {
         </IconButton>
         <Editable
           renderElement={renderElement}
+          renderLeaf={renderLeaf}
           style={{ flex: "1" }}
           placeholder="Message #general"
-          decorate={() => []}
+          decorate={decorate}
         />
         <IconButton onClick={handleOpen} size="small">
           <EmojiEmotions />

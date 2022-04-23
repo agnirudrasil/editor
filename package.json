@@ -1,12 +1,8 @@
 {
-  "name": "react-typescript",
+  "name": "editor",
   "version": "1.0.0",
-  "description": "React and TypeScript example starter project",
-  "keywords": [
-    "typescript",
-    "react",
-    "starter"
-  ],
+  "description": "Markdown editor with slatejs",
+  "keywords": [],
   "main": "src/index.tsx",
   "dependencies": {
     "@emotion/react": "11.9.0",

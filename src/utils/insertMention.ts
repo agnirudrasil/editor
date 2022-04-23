@@ -21,6 +21,6 @@ export const insertMention = (
       },
       { text: " " }
     ],
-    { at }
+    { at, select: true }
   );
 };
