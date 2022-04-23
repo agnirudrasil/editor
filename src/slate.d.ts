@@ -38,10 +38,12 @@ export type CustomElement =
 
 export type FormattedText = {
   text: string;
-  code?: boolean;
-  bold?: boolean;
-  italic?: boolean;
-  underlined?: boolean;
+  inlineCode?: boolean;
+  url?: boolean;
+  strong?: boolean;
+  emphasis?: boolean;
+  underline?: boolean;
+  strikethrough?: boolean;
   syntax?: boolean;
 };
 

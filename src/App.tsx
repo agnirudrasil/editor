@@ -16,24 +16,40 @@ import { AddCircle, EmojiEmotions, Gif } from "@mui/icons-material";
 import { withEmoji } from "./plugins/withEmoji";
 import { withMention } from "./plugins/withMention";
 import { insertMention } from "./utils/insertMention";
+import {
+  extraSpaces,
+  syntaxTree
+} from "./markdown/parsers/parseMessageContent";
+import { SingleASTNode } from "simple-markdown";
 
 const RenderLeaf = ({ attributes, children, leaf }: RenderLeafProps) => {
-  if (leaf.code) {
-    return <code {...attributes}>{children}</code>;
+  if (leaf.inlineCode) {
+    return (
+      <Typography
+        sx={{ bgcolor: "grey.400", borderRadius: "3px", p: "2px" }}
+        component="code"
+        {...attributes}
+      >
+        {children}
+      </Typography>
+    );
   }
 
   return (
-    <span
-      style={{
-        color: leaf.syntax ? "#ccc" : "black",
-        fontWeight: leaf.bold ? "bold" : undefined,
-        fontStyle: leaf.italic ? "italic" : undefined,
-        textDecoration: leaf.underlined ? "underline" : undefined
+    <Typography
+      component="span"
+      color={leaf.syntax ? "GrayText" : leaf.url ? "blue" : undefined}
+      sx={{
+        fontWeight: leaf.strong ? "bold" : undefined,
+        fontStyle: leaf.emphasis ? "italic" : undefined,
+        textDecoration: `${leaf.underline || leaf.url ? "underline" : ""} ${
+          leaf.strikethrough ? "line-through" : ""
+        }`
       }}
       {...attributes}
     >
       {children}
-    </span>
+    </Typography>
   );
 };
 
@@ -107,6 +123,79 @@ export default function App() {
   const decorate = useCallback(([node, path]: NodeEntry<Node>) => {
     const ranges: Range[] = [];
 
+    if (!Text.isText(node)) {
+      return ranges;
+    }
+
+    const tokens = syntaxTree(node.text);
+
+    let start = 0;
+
+    const tokenize = (token: SingleASTNode) => {
+      if (token?.type === "text") {
+        start += token.content.length;
+        return;
+      } else if (token.type === "url") {
+        const end = start + token.content.length;
+        ranges.push({
+          [token.type]: true,
+          anchor: {
+            path,
+            offset: start
+          },
+          focus: {
+            path,
+            offset: end
+          }
+        });
+        start = end;
+        return;
+      } else if (!token) {
+        return;
+      } else {
+        const actualStart = start;
+        let end = start + extraSpaces[token.type].syntaxBefore.length;
+        ranges.push({
+          syntax: true,
+          anchor: {
+            path,
+            offset: start
+          },
+          focus: {
+            path,
+            offset: end
+          }
+        });
+        start = end;
+        token.content.map(tokenize);
+        ranges.push({
+          [token.type]: true,
+          anchor: { path, offset: actualStart },
+          focus: { path, offset: start }
+        });
+        end = start + extraSpaces[token.type].syntaxAfter.length;
+        ranges.push({
+          syntax: true,
+          anchor: {
+            path,
+            offset: start
+          },
+          focus: {
+            path,
+            offset: end
+          }
+        });
+        start = end;
+        return;
+      }
+    };
+
+    for (const token of tokens) {
+      tokenize(token);
+    }
+
+    console.log(tokens);
+
     return ranges;
   }, []);
 
@@ -131,7 +220,9 @@ export default function App() {
   return (
     <Slate
       editor={editor}
-      value={[{ type: "paragraph", children: [{ text: "" }] }]}
+      value={[
+        { type: "paragraph", children: [{ text: "__**b*o*ld**__ **strong**" }] }
+      ]}
     >
       <Stack
         direction="row"
