@@ -1,26 +1,24 @@
 import "emoji-mart/css/emoji-mart.css";
 
 import React, { useCallback, useRef, useState } from "react";
-import { createEditor, Editor, Node, NodeEntry, Range, Text } from "slate";
+import { createEditor, Descendant, Editor, Node } from "slate";
 import { withHistory } from "slate-history";
 import {
   Slate,
   withReact,
   Editable,
   RenderElementProps,
-  RenderLeafProps
+  RenderLeafProps,
 } from "slate-react";
 import { Emoji, Picker } from "emoji-mart";
-import { Stack, IconButton, Popover, Typography } from "@mui/material";
+import { Stack, IconButton, Popover, Typography, Box } from "@mui/material";
 import { AddCircle, EmojiEmotions, Gif } from "@mui/icons-material";
 import { withEmoji } from "./plugins/withEmoji";
 import { withMention } from "./plugins/withMention";
+import { withBlockquote } from "./plugins/withBlockquote";
+import { withCodeblock } from "./plugins/withCodeblock";
 import { insertMention } from "./utils/insertMention";
-import {
-  extraSpaces,
-  syntaxTree
-} from "./markdown/parsers/parseMessageContent";
-import { SingleASTNode } from "simple-markdown";
+import { decorateMarkdown } from "./utils/decorateMarkdown";
 
 const RenderLeaf = ({ attributes, children, leaf }: RenderLeafProps) => {
   if (leaf.inlineCode) {
@@ -33,18 +31,44 @@ const RenderLeaf = ({ attributes, children, leaf }: RenderLeafProps) => {
         {children}
       </Typography>
     );
+  } else if (leaf.syntax) {
+    return (
+      <Typography color="GrayText" component="span" {...attributes}>
+        {children}
+      </Typography>
+    );
   }
-
   return (
     <Typography
       component="span"
-      color={leaf.syntax ? "GrayText" : leaf.url ? "blue" : undefined}
+      color={leaf.url ? "blue" : undefined}
       sx={{
+        color: leaf.comment
+          ? "slategray"
+          : leaf.operator || leaf.url
+          ? "#9a6e4a"
+          : leaf.keyword
+          ? "#07a"
+          : leaf.variable || leaf.regex
+          ? "e90"
+          : leaf.number ||
+            leaf.boolean ||
+            leaf.tag ||
+            leaf.constant ||
+            leaf.symbol ||
+            leaf.selector ||
+            leaf["attr-name"]
+          ? "#905"
+          : leaf.string || leaf.char
+          ? "#690"
+          : leaf.function || leaf["class-name"]
+          ? "#dd4a68"
+          : "",
         fontWeight: leaf.strong ? "bold" : undefined,
         fontStyle: leaf.emphasis ? "italic" : undefined,
         textDecoration: `${leaf.underline || leaf.url ? "underline" : ""} ${
           leaf.strikethrough ? "line-through" : ""
-        }`
+        }`,
       }}
       {...attributes}
     >
@@ -56,7 +80,7 @@ const RenderLeaf = ({ attributes, children, leaf }: RenderLeafProps) => {
 const RenderElement = ({
   element,
   children,
-  attributes
+  attributes,
 }: RenderElementProps) => {
   switch (element.type) {
     case "emoji":
@@ -64,13 +88,22 @@ const RenderElement = ({
         <span
           style={{
             display: "inline-block",
-            verticalAlign: "middle"
+            verticalAlign: "middle",
           }}
           {...attributes}
         >
           <Emoji size={22} set="twitter" emoji={element.emoji} />
           {children}
         </span>
+      );
+    case "blockquote":
+      return (
+        <Stack alignItems="center" direction="row" spacing={1} {...attributes}>
+          <span
+            style={{ width: "4px", background: "#ddd", height: "1.5rem" }}
+          />
+          <Typography component="blockquote">{children}</Typography>
+        </Stack>
       );
     case "mention":
       return (
@@ -91,8 +124,8 @@ const RenderElement = ({
               bgcolor:
                 element.mentionType === "role"
                   ? "secondary.dark"
-                  : "primary.dark"
-            }
+                  : "primary.dark",
+            },
           }}
           {...attributes}
         >
@@ -100,6 +133,19 @@ const RenderElement = ({
           {element.name}
           {children}
         </Typography>
+      );
+    case "codeblock":
+      return (
+        <Box
+          sx={{
+            p: 1,
+            border: "1px solid black",
+            bgcolor: "grey.400",
+          }}
+          {...attributes}
+        >
+          {children}
+        </Box>
       );
     default:
       return (
@@ -110,103 +156,51 @@ const RenderElement = ({
   }
 };
 
+export const serialize = (nodes: any) => {
+  return nodes.map((n: any) => Node.string(n)).join("\n");
+};
+
+export const getLength = (token: string | Prism.Token): number => {
+  if (typeof token === "string") {
+    return token.length;
+  } else if (typeof token.content === "string") {
+    return token.content.length;
+  } else {
+    return (token.content as (string | Prism.Token)[]).reduce(
+      (l, t) => l + getLength(t),
+      0,
+    );
+  }
+};
+
 export default function App() {
+  const [value, setValue] = useState<Descendant[]>([
+    {
+      type: "paragraph",
+      children: [{ text: 'console.log("Hello World");' }],
+    },
+  ]);
   const editorRef = useRef<Editor | null>(null);
   const [open, setOpen] = useState<HTMLButtonElement | null>(null);
   if (!editorRef.current)
-    editorRef.current = withMention(
-      withEmoji(withHistory(withReact(createEditor())))
+    editorRef.current = withCodeblock(
+      withBlockquote(
+        withMention(withEmoji(withHistory(withReact(createEditor())))),
+      ),
     );
 
   const editor = editorRef.current;
 
-  const decorate = useCallback(([node, path]: NodeEntry<Node>) => {
-    const ranges: Range[] = [];
-
-    if (!Text.isText(node)) {
-      return ranges;
-    }
-
-    const tokens = syntaxTree(node.text);
-
-    let start = 0;
-
-    const tokenize = (token: SingleASTNode) => {
-      if (token?.type === "text") {
-        start += token.content.length;
-        return;
-      } else if (token.type === "url") {
-        const end = start + token.content.length;
-        ranges.push({
-          [token.type]: true,
-          anchor: {
-            path,
-            offset: start
-          },
-          focus: {
-            path,
-            offset: end
-          }
-        });
-        start = end;
-        return;
-      } else if (!token) {
-        return;
-      } else {
-        const actualStart = start;
-        let end = start + extraSpaces[token.type].syntaxBefore.length;
-        ranges.push({
-          syntax: true,
-          anchor: {
-            path,
-            offset: start
-          },
-          focus: {
-            path,
-            offset: end
-          }
-        });
-        start = end;
-        token.content.map(tokenize);
-        ranges.push({
-          [token.type]: true,
-          anchor: { path, offset: actualStart },
-          focus: { path, offset: start }
-        });
-        end = start + extraSpaces[token.type].syntaxAfter.length;
-        ranges.push({
-          syntax: true,
-          anchor: {
-            path,
-            offset: start
-          },
-          focus: {
-            path,
-            offset: end
-          }
-        });
-        start = end;
-        return;
-      }
-    };
-
-    for (const token of tokens) {
-      tokenize(token);
-    }
-
-    console.log(tokens);
-
-    return ranges;
-  }, []);
+  const decorate = useCallback(decorateMarkdown, []);
 
   const renderElement = useCallback(
     (props: RenderElementProps) => <RenderElement {...props} />,
-    []
+    [],
   );
 
   const renderLeaf = useCallback(
     (props: RenderLeafProps) => <RenderLeaf {...props} />,
-    []
+    [],
   );
 
   const handleOpen = (e: React.MouseEvent<HTMLButtonElement>) => {
@@ -218,12 +212,7 @@ export default function App() {
   };
 
   return (
-    <Slate
-      editor={editor}
-      value={[
-        { type: "paragraph", children: [{ text: "__**b*o*ld**__ **strong**" }] }
-      ]}
-    >
+    <Slate editor={editor} value={value} onChange={setValue}>
       <Stack
         direction="row"
         alignItems="center"
@@ -234,7 +223,7 @@ export default function App() {
             insertMention(editor, {
               id: "123",
               name: "Agnirudra Sil",
-              mentionType: "user"
+              mentionType: "user",
             });
           }}
           size="small"
@@ -242,6 +231,7 @@ export default function App() {
           <AddCircle />
         </IconButton>
         <Editable
+          spellCheck={false}
           renderElement={renderElement}
           renderLeaf={renderLeaf}
           style={{ flex: "1" }}
@@ -258,18 +248,18 @@ export default function App() {
       <Popover
         anchorOrigin={{
           vertical: "bottom",
-          horizontal: "right"
+          horizontal: "right",
         }}
         transformOrigin={{
           vertical: "top",
-          horizontal: "right"
+          horizontal: "right",
         }}
         anchorEl={open}
         open={Boolean(open)}
         onClose={handleClose}
       >
         <Picker
-          onSelect={(e) => {
+          onSelect={e => {
             editor.insertText(e.colons || "");
             handleClose();
           }}

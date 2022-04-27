@@ -23,7 +23,7 @@ import { createASTParser, createParser } from "./createParser";
 interface ExtraSpaces {
   syntaxBefore: string;
   syntaxAfter: string;
-  length: 2;
+  length: number;
 }
 
 export const extraSpaces: Record<string, ExtraSpaces> = {
@@ -111,7 +111,6 @@ const AST_PARSERS = {
   emoji,
   emote,
   emphasis,
-  escape,
   inlineCode,
   lineBreak,
   mention,

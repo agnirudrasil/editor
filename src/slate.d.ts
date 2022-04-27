@@ -16,6 +16,21 @@ export type ParagraphElement = {
   children: CustomText[];
 };
 
+export type CodeblockElement = {
+  type: "codeblock";
+  children: CustomText[];
+};
+
+export type CodelineElement = {
+  type: "codeline";
+  children: CustomText[];
+};
+
+export type BlockquoteElement = {
+  type: "blockquote";
+  children: CustomText[];
+};
+
 export type HeadingElement = {
   type: "heading";
   level: number;
@@ -34,6 +49,9 @@ export type CustomElement =
   | ParagraphElement
   | HeadingElement
   | EmojiElement
+  | BlockquoteElement
+  | CodeblockElement
+  | CodelineElement
   | MentionElement;
 
 export type FormattedText = {
@@ -45,6 +63,23 @@ export type FormattedText = {
   underline?: boolean;
   strikethrough?: boolean;
   syntax?: boolean;
+  spoiler?: boolean;
+  comment?: boolean;
+  operator?: boolean;
+  keyword?: boolean;
+  variable?: boolean;
+  regex?: boolean;
+  number?: boolean;
+  boolean?: boolean;
+  tag?: boolean;
+  constant?: boolean;
+  symbol?: boolean;
+  selector?: boolean;
+  string?: boolean;
+  function?: boolean;
+  char?: boolean;
+  "class-name"?: boolean;
+  "attr-name"?: boolean;
 };
 
 export type CustomText = FormattedText;
