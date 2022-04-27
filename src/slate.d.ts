@@ -56,6 +56,7 @@ export type CustomElement =
 
 export type FormattedText = {
   text: string;
+  type?: string;
   inlineCode?: boolean;
   url?: boolean;
   strong?: boolean;

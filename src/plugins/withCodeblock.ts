@@ -1,4 +1,4 @@
-import { Editor, Text, Transforms } from "slate";
+import { Editor, Text, Transforms, Path, Node } from "slate";
 import { isBlockActive } from "../utils/isBlockActive";
 
 export const withCodeblock = (editor: Editor) => {
@@ -6,28 +6,21 @@ export const withCodeblock = (editor: Editor) => {
   editor.normalizeNode = nodeEntry => {
     const [node, path] = nodeEntry;
 
-    if (
-      Text.isText(node) &&
-      !node.text.startsWith("```") &&
-      isBlockActive(editor, "codeblock")
-    ) {
+    if (Text.isText(node) && node.text.startsWith("```")) {
       Transforms.setNodes(
         editor,
-        { type: "paragraph" },
-        { match: n => Editor.isBlock(editor, n) },
+        { type: "codeline" },
+        {
+          at: {
+            anchor: { path: Path.next(Path.parent(path)), offset: 0 },
+            focus: Editor.end(editor, []),
+          },
+          match: n => Editor.isBlock(editor, n),
+          mode: "all",
+        },
       );
-    }
 
-    if (
-      Text.isText(node) &&
-      node.text.startsWith("```") &&
-      !isBlockActive(editor, "codeblock")
-    ) {
-      Transforms.setNodes(
-        editor,
-        { type: "codeblock" },
-        { match: n => Editor.isBlock(editor, n) },
-      );
+      return;
     }
     normalizeNode(nodeEntry);
   };

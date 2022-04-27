@@ -3,7 +3,7 @@ import { Editor, Element } from "slate";
 export const isBlockActive = (
   editor: Editor,
   format: string,
-  blockType = "type"
+  blockType: "type" = "type",
 ) => {
   const { selection } = editor;
   if (!selection) return false;
@@ -11,9 +11,9 @@ export const isBlockActive = (
   const [match] = Array.from(
     Editor.nodes(editor, {
       at: Editor.unhangRange(editor, selection),
-      match: (n) =>
-        !Editor.isEditor(n) && Element.isElement(n) && n[blockType] === format
-    })
+      match: n =>
+        !Editor.isEditor(n) && Element.isElement(n) && n[blockType] === format,
+    }),
   );
 
   return !!match;

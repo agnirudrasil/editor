@@ -134,18 +134,11 @@ const RenderElement = ({
           {children}
         </Typography>
       );
-    case "codeblock":
+    case "codeline":
       return (
-        <Box
-          sx={{
-            p: 1,
-            border: "1px solid black",
-            bgcolor: "grey.400",
-          }}
-          {...attributes}
-        >
+        <Typography fontFamily="monospace" component="pre" {...attributes}>
           {children}
-        </Box>
+        </Typography>
       );
     default:
       return (
@@ -158,19 +151,6 @@ const RenderElement = ({
 
 export const serialize = (nodes: any) => {
   return nodes.map((n: any) => Node.string(n)).join("\n");
-};
-
-export const getLength = (token: string | Prism.Token): number => {
-  if (typeof token === "string") {
-    return token.length;
-  } else if (typeof token.content === "string") {
-    return token.content.length;
-  } else {
-    return (token.content as (string | Prism.Token)[]).reduce(
-      (l, t) => l + getLength(t),
-      0,
-    );
-  }
 };
 
 export default function App() {
@@ -191,7 +171,7 @@ export default function App() {
 
   const editor = editorRef.current;
 
-  const decorate = useCallback(decorateMarkdown, []);
+  const decorate = useCallback(decorateMarkdown(editor), [editor]);
 
   const renderElement = useCallback(
     (props: RenderElementProps) => <RenderElement {...props} />,
@@ -245,6 +225,7 @@ export default function App() {
           <Gif />
         </IconButton>
       </Stack>
+      <pre>{JSON.stringify(value, null, 2)}</pre>
       <Popover
         anchorOrigin={{
           vertical: "bottom",

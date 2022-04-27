@@ -1,19 +1,24 @@
 import { emojiIndex } from "emoji-mart";
 import { Editor, Text } from "slate";
 import { insertEmoji } from "../utils/insertEmoji";
+import { isBlockActive } from "../utils/isBlockActive";
 
 export const withEmoji = (editor: Editor) => {
   const { normalizeNode, isInline, isVoid } = editor;
 
-  editor.isInline = (element) =>
+  editor.isInline = element =>
     element.type === "emoji" ? true : isInline(element);
 
-  editor.isVoid = (element) =>
+  editor.isVoid = element =>
     element.type === "emoji" ? true : isVoid(element);
 
-  editor.normalizeNode = (nodeEntry) => {
+  editor.normalizeNode = nodeEntry => {
     const [node, path] = nodeEntry;
-    if (Text.isText(node) && /:.*?:/.test(node.text)) {
+    if (
+      Text.isText(node) &&
+      !isBlockActive(editor, "codeline") &&
+      /:.*?:/.test(node.text)
+    ) {
       const match = /:(.*?):/.exec(node.text);
 
       const index = node.text.indexOf(match![0]);
@@ -24,12 +29,12 @@ export const withEmoji = (editor: Editor) => {
         insertEmoji(editor, emoji, {
           anchor: {
             path,
-            offset: index
+            offset: index,
           },
           focus: {
             path,
-            offset: index + match![0].length
-          }
+            offset: index + match![0].length,
+          },
         });
         return;
       }
